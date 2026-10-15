@@ -17,10 +17,23 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - Python 3.10 only
     import tomli as tomllib
 
+# Some plugin hosts launch Python with safe-path isolation enabled.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from workbench_constants import positive_int
+
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REGISTRY = PLUGIN_ROOT / "preflight" / "capability-profiles.toml"
-DEFAULT_CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
-SYSTEM_CONFIG = Path("/etc/codex/config.toml")
+DEFAULT_CODEX_HOME = Path(os.environ.get("CODEX_HOME", "~/.codex")).expanduser()
+
+
+def default_system_config() -> Path:
+    if os.name == "nt":
+        program_data = os.environ.get("ProgramData", r"C:\ProgramData")
+        return Path(program_data) / "OpenAI" / "Codex" / "config.toml"
+    return Path("/etc/codex/config.toml")
+
+
+SYSTEM_CONFIG = default_system_config()
 DEFAULT_CONFIG = DEFAULT_CODEX_HOME / "config.toml"
 VALID_SEVERITIES = {"block", "warn", "suggest"}
 VALID_MULTI_AGENT_OWNERS = {"native", "codex-bridge"}
@@ -138,13 +151,6 @@ def parse_bool(value: str) -> bool:
     raise ValueError(f"expected true or false, got {value!r}")
 
 
-def positive_int(value: str) -> int:
-    parsed = int(value)
-    if parsed < 1:
-        raise argparse.ArgumentTypeError("expected a positive integer")
-    return parsed
-
-
 def parse_assignment(raw: str) -> tuple[str, str]:
     key, separator, value = raw.partition("=")
     if not separator or not key or not value:
@@ -244,6 +250,16 @@ def project_trust_level(
         if not isinstance(projects, dict):
             continue
         project = projects.get(str(project_root))
+        if not isinstance(project, dict) and os.name == "nt":
+            project_key = os.path.normcase(os.path.realpath(project_root))
+            project = next(
+                (
+                    value
+                    for path, value in projects.items()
+                    if os.path.normcase(os.path.realpath(path)) == project_key
+                ),
+                None,
+            )
         if not isinstance(project, dict):
             continue
         trust_level = project.get("trust_level")
@@ -436,6 +452,7 @@ def resolve_multi_agent_context(
     runtime_version: str | None,
     runtime_session_cap: int | None,
     runtime_provenance: str | None,
+    validate_multi_agent_config: bool,
 ) -> dict[str, Any]:
     runtime_facts_supplied = any(
         value is not None for value in (runtime_owner, runtime_version, runtime_session_cap)
@@ -489,26 +506,30 @@ def resolve_multi_agent_context(
     if runtime_session_cap is not None and version != "v2":
         raise ValueError("--multi-agent-session-cap is valid only for a V2 runtime")
 
-    backend_found, backend_cap, backend_source = lookup_config_value(
-        "backend_config.max_multiagent_concurrency",
+    bridge_cap_found, bridge_cap, bridge_cap_source = lookup_config_value(
+        "multiagent_config.max_concurrency",
         config_layers=config_layers,
         effective_config=effective_config,
         config_profile=config_profile,
     )
-    if backend_found and owner != "codex-bridge":
+    if (
+        bridge_cap_found
+        and owner != "codex-bridge"
+        and (validate_multi_agent_config or runtime_facts_supplied)
+    ):
         raise ValueError(
-            "backend_config.max_multiagent_concurrency does not prove bridge ownership; "
+            "multiagent_config.max_concurrency does not prove bridge ownership; "
             "pass --multi-agent-runtime-owner codex-bridge only when the active runtime "
             "is verified as bridge-managed"
         )
-    if backend_found and runtime_session_cap is not None and backend_cap != runtime_session_cap:
+    if bridge_cap_found and runtime_session_cap is not None and bridge_cap != runtime_session_cap:
         raise ValueError(
-            "conflicting bridge concurrency facts: backend_config.max_multiagent_concurrency "
-            f"from {backend_source} is {backend_cap!r}, but --multi-agent-session-cap is "
+            "conflicting bridge concurrency facts: multiagent_config.max_concurrency "
+            f"from {bridge_cap_source} is {bridge_cap!r}, but --multi-agent-session-cap is "
             f"{runtime_session_cap!r}"
         )
 
-    agent_threads_found, _agent_threads, _agent_threads_source = lookup_config_value(
+    agent_threads_found, agent_threads, agent_threads_source = lookup_config_value(
         "agents.max_threads",
         config_layers=config_layers,
         effective_config=effective_config,
@@ -533,6 +554,9 @@ def resolve_multi_agent_context(
         "version_source": version_source,
         "runtime_provenance": runtime_provenance,
         "config_v2_enabled": feature_found and bool(enabled),
+        "agent_max_threads_configured": agent_threads_found,
+        "agent_max_threads": agent_threads if agent_threads_found else None,
+        "agent_max_threads_source": agent_threads_source if agent_threads_found else None,
     }
 
 
@@ -566,7 +590,7 @@ def evaluate_multi_agent_capacity(
             path = "runtime.multi_agent.session_cap"
             found, actual, source = True, runtime_session_cap, "runtime-fact"
         elif multi_agent_context["owner"] == "codex-bridge":
-            path = "backend_config.max_multiagent_concurrency"
+            path = "multiagent_config.max_concurrency"
             found, actual, source = lookup_config_value(
                 path,
                 config_layers=config_layers,
@@ -643,6 +667,30 @@ def evaluate_requirement(
         actual = runtime_checks[check]
         return {**result, "status": "pass" if actual else "fail", "actual": actual, "check": check}
 
+    if capability["kind"] == "multi_agent_mode":
+        actual = {
+            "owner": multi_agent_context["owner"],
+            "version": multi_agent_context["version"],
+        }
+        expected = {
+            "owner": capability["owner"],
+            "version": capability["version"],
+        }
+        if "unknown" in actual.values():
+            return {
+                **result,
+                "status": "unknown",
+                "check": "active_multi_agent_mode",
+                "actual": actual,
+                "expected": expected,
+            }
+        return {
+            **result,
+            "status": "pass" if actual == expected else "fail",
+            "actual": actual,
+            "expected": expected,
+        }
+
     if capability["kind"] == "plugin_skills":
         required = capability["required"]
         required_skill_ids = [f"{capability['plugin']}:{skill}" for skill in required]
@@ -675,6 +723,25 @@ def evaluate_requirement(
             multi_agent_context=multi_agent_context,
             runtime_session_cap=runtime_session_cap,
         )
+
+    if capability["kind"] == "config_absent":
+        path = capability["path"]
+        found, actual, source = lookup_config_value(
+            path,
+            config_layers=config_layers,
+            effective_config=effective_config,
+            config_profile=config_profile,
+        )
+        if not found:
+            return {**result, "status": "pass", "path": path, "expected": "unset"}
+        return {
+            **result,
+            "status": "fail",
+            "path": path,
+            "actual": actual,
+            "expected": "unset",
+            "source": source,
+        }
 
     path = capability["path"]
     found, actual, source = lookup_config_value(
@@ -712,6 +779,29 @@ def validate_registry(registry: dict[str, Any]) -> None:
                 )
 
 
+def profile_requires_multi_agent_config(
+    profile: dict[str, Any], capabilities: dict[str, dict[str, Any]]
+) -> bool:
+    def is_runtime_path(path: Any) -> bool:
+        return isinstance(path, str) and (
+            path in {"agents", "features", "features.multi_agent_v2", "multiagent_config"}
+            or path.startswith(("agents.", "multiagent_config.", "features.multi_agent_v2."))
+        )
+
+    for requirement in profile["requirements"]:
+        capability = capabilities[requirement["capability"]]
+        if (
+            capability["kind"] in {"multi_agent_capacity", "multi_agent_mode"}
+            or requirement.get("modes")
+            or is_runtime_path(capability.get("path"))
+        ):
+            return True
+    remediation = profile.get("remediation", {})
+    return bool(remediation.get("variants")) or any(
+        is_runtime_path(patch.get("path")) for patch in remediation.get("patches", [])
+    )
+
+
 def resolve_remediation(
     profile: dict[str, Any], *, multi_agent_context: dict[str, Any]
 ) -> dict[str, Any]:
@@ -723,7 +813,16 @@ def resolve_remediation(
         if variant["mode"] == multi_agent_mode:
             if multi_agent_mode == "v2" and multi_agent_context["owner"] != "native":
                 break
-            remediation["patches"] = remediation.get("patches", []) + variant.get("patches", [])
+            variant_patches = variant.get("patches", [])
+            if multi_agent_mode == "v2" and not multi_agent_context["agent_max_threads_configured"]:
+                variant_patches = [
+                    patch
+                    for patch in variant_patches
+                    if not (
+                        patch.get("kind") == "remove" and patch.get("path") == "agents.max_threads"
+                    )
+                ]
+            remediation["patches"] = remediation.get("patches", []) + variant_patches
             return remediation
     if variants:
         remediation["note"] = (
@@ -763,7 +862,6 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
         if path in project_config_paths_set:
             # Codex strips project-local profile selection and definitions before
             # resolving the merged config. Mirror that denylist here.
-            config = dict(config)
             config.pop("profile", None)
             config.pop("profiles", None)
         config_layers.append((path, config))
@@ -783,6 +881,9 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
         runtime_version=args.multi_agent_runtime_version,
         runtime_session_cap=args.multi_agent_session_cap,
         runtime_provenance=args.multi_agent_runtime_provenance,
+        validate_multi_agent_config=profile_requires_multi_agent_config(
+            profile, registry["capabilities"]
+        ),
     )
     results = [
         evaluate_requirement(
@@ -803,7 +904,7 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
     unknown = [result for result in results if result["status"] == "unknown"]
     if any(result["severity"] == "block" for result in failed):
         status = "blocked"
-    elif unknown:
+    elif any(result["severity"] == "block" for result in unknown):
         status = "incomplete"
     else:
         status = "ready"
@@ -812,6 +913,7 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
         "profile": profile_id,
         "description": profile["description"],
         "config_resolution": config_resolution,
+        "user_config_path": None if args.config else str(profile_layer_path or DEFAULT_CONFIG),
         "config_paths": [str(path) for path in config_paths],
         "config_discovery": config_discovery,
         "config_profile": config_profile,

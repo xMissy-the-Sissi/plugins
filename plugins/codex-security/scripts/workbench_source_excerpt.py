@@ -10,11 +10,10 @@ from typing import Any
 
 # Some plugin hosts launch Python with safe-path isolation enabled.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from workbench_target import clean_worktree_content_digest, git_bytes, git_output
+from workbench_target import clean_worktree_content_digest, git_bytes
 
 CONTEXT_LINES = 3
 MAX_BYTES = 16_000
-MAX_FILE_BYTES = 1_048_576
 MAX_LINES = 60
 
 
@@ -41,7 +40,10 @@ def finding_source_excerpt(
     source = scanned_source_text(scan, target, path)
     if not source or "\0" in source:
         return None
-    lines = source.splitlines()
+    # Match location validation and SARIF hashing: CR, LF, and CRLF are line breaks.
+    # Keep form feeds and Unicode separators within their original source lines.
+    normalized = source.replace("\r\n", "\n").replace("\r", "\n")
+    lines = normalized.removesuffix("\n").split("\n")
     if start_line < 1 or start_line > len(lines):
         return None
     last_affected_line = end_line if isinstance(end_line, int) else start_line
@@ -70,9 +72,6 @@ def scanned_source_text(scan: sqlite3.Row, target: Path, path: str) -> str | Non
     if snapshot_digest is not None and snapshot_digest != clean_worktree_content_digest():
         return None
     object_name = f"{revision}:{path}"
-    size = git_output(target, "cat-file", "-s", object_name)
-    if size is None or not size.isdigit() or int(size) > MAX_FILE_BYTES:
-        return None
     content = git_bytes(target, "cat-file", "blob", object_name)
     return content.decode("utf-8", errors="replace") if content is not None else None
 
@@ -91,9 +90,5 @@ def safe_source_path(target: Path, relative_path: str) -> Path | None:
     return path
 
 
-def main() -> None:
-    argparse.ArgumentParser(description=__doc__).parse_args()
-
-
 if __name__ == "__main__":
-    main()
+    argparse.ArgumentParser(description=__doc__).parse_args()
