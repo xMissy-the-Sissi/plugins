@@ -37,14 +37,32 @@ def crop_within(pairs, site, radius):
     kept. `pairs` is [(api_index, residue), ...]; `site` is a set of api indices.
     """
     by_idx = {idx: res for idx, res in pairs}
-    site_atoms = np.vstack([atom_coords(by_idx[s]) for s in site])
-    keep = []
+    site_coords = [atom_coords(by_idx[s]) for s in site if s in by_idx]
+    if not site_coords:
+        return sorted(site)
+    site_atoms = np.vstack(site_coords)
+
+    radius_sq = radius * radius
+    # Performance optimization: compute bounding box of site atoms for fast spatial pruning
+    site_min = site_atoms.min(axis=0) - radius
+    site_max = site_atoms.max(axis=0) + radius
+
+    keep = set(site)
     for idx, res in pairs:
+        if idx in keep:
+            continue
         coords = atom_coords(res)
+        # Fast bounding box check to skip distant residues without array broadcasting
+        c_min = coords.min(axis=0)
+        c_max = coords.max(axis=0)
+        if np.any(c_max < site_min) or np.any(c_min > site_max):
+            continue
+        # Check squared distance to avoid expensive np.sqrt calls
         d2 = ((coords[:, None, :] - site_atoms[None, :, :]) ** 2).sum(-1)
-        if np.sqrt(d2.min()) < radius:
-            keep.append(idx)
-    return sorted(set(keep) | set(site))
+        if d2.min() < radius_sq:
+            keep.add(idx)
+    return sorted(keep)
+
 
 
 def main():

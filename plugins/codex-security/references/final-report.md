@@ -1,5 +1,7 @@
 # Final Report and Codex Review Directives
 
+Follow `artifact-storage.md` for storing canonical results, supplementary documents and `report_validation.md`.
+
 Use this guidance when authoring canonical report semantics and returning the generated Codex Security report and review directives.
 
 ## Final Outputs
@@ -16,9 +18,27 @@ Use `report.md` as the primary readable entry point. Explain report-relevant art
 
 In the final response, link the generated markdown report path as the primary readable artifact.
 
-Every scan mode uses the same final report pipeline. The model authors canonical JSON only; it must not author, repair, or treat an existing `report.md` as input. `complete-scan` invokes finalization, which validates and enriches the canonical JSON, seals the canonical JSON and evidence artifacts, then deterministically generates and validates `report.md` as an unsealed downstream projection. Missing report prose must be added to the structured canonical fields rather than recovered from a separately authored report.
+Every scan mode uses the same final report pipeline. Workbench-owned Standard and workbench-backed diff scans submit canonical semantics with `record_codex_security_scan_draft({ scanId, handoffClaimToken?, scope?, threatModel?, findings, coverage })`; the workbench supplies authoritative metadata and writes the unsealed canonical draft. For Deep scans, the coordinator writes the parent scan's unsealed canonical draft from its accepted aggregate. SDK-owned Standard scans instead write unsealed canonical files with the exact SDK-provided metadata and leave finalization to the SDK. Terminal scans without a `scanId` retain their existing canonical JSON workflow. No mode authors, repairs, or treats an existing `report.md` as input. Finalization validates and enriches the canonical JSON, seals the canonical JSON and evidence artifacts, then deterministically generates `report.md`. Supply report prose through structured canonical semantics rather than a separately authored report.
 
-When `complete_codex_security_scan` is available, use it to complete the scan. In Codex CLI or another terminal/chat host without that tool, run `python <plugin_dir>/scripts/finalize_scan_contract.py --scan-dir <scan_dir> --source-root <repo_root>` after writing the completed canonical JSON. Do not mark the scan goal complete until this command succeeds and the generated markdown report exists.
+For each finding, supply an evidence-supported lowercase vulnerability-family `ruleId`; `taxonomy: { category, cwe }` using its exact known CWEs; verified locations; and `provenance.source`, using `"local_plugin"` only when this plugin actually discovered the finding. Preserve genuine worker or source provenance and any existing canonical candidate identity in the finding extensions. A finding with no known CWE retains `cwe: []`; never invent a classification. Include optional `codeEvidence` only when its actual code is nonempty and every referenced evidence ID is present.
+
+For Standard scan drafts, including Deep worker results, and diff drafts, supply semantic coverage as `{ completeness, surfaces, explicitExclusions, deferred }`, with each surface using the actual `label` and one existing `disposition`. Mark coverage `partial` when a deferred item or `needs_follow_up` surface remains; preserve its real reason and supporting context. Each deferred item needs a meaningful reason; preserve any existing `id` or `candidateId`. Use each deferred `id` only once per draft. The draft response includes the saved coverage. Copy its deferred IDs in later updates and closures; the workbench assigns missing IDs before saving a checkpoint. Open questions may be nonempty strings or `{ question, followUpPrompt? }` objects. The workbench derives target and scope metadata, scope include and exclude paths, coverage mode and inventory strategy, finding identities and fingerprints, and IDs for new surfaces. Preserve saved surface IDs in updates; omit the other workbench-owned values and top-level coverage receipt references from the semantic draft.
+
+To close a saved task, include `coverage.resolvedDeferred: [{ id, reason }]` in the final Standard or diff draft, using its saved ID and a completion reason. Update linked surfaces by saved ID and keep unfinished work in `deferred`. Tasks without saved IDs do not replace earlier work. Candidate-linked tasks require findings or terminal dispositions; redundant closure entries for those outcomes are ignored. Deep parents cannot close worker tasks. Original checkpoints remain unchanged. Report generation and sealing belong to completion, not deferred review work.
+
+During a host-backed scan, checkpoint saved findings and pending candidates with `complete: false`; a checkpoint is not a completed audit. After a final workbench-owned Standard or workbench-backed diff draft is accepted with `complete: true` (or the backwards-compatible omitted flag), or the Deep coordinator returns its parent scan's canonical manifest, call `complete_codex_security_scan({ scanId, handoffClaimToken? })` and use its returned completion metadata. An SDK-owned scan returns its unsealed canonical files without calling a completion tool or finalizer; the SDK owns completion and report generation. Read full canonical results only when explicitly requested. For a terminal/chat workflow without a `scanId` or completion tool, retain `python <plugin_dir>/scripts/finalize_scan_contract.py --scan-dir <scan_dir> --source-root <repo_root>` after writing the canonical JSON. Outside the SDK path, do not mark the scan goal complete until finalization succeeds and the generated report exists.
+
+On a confirmed failure or explicit cancellation, the workbench preserves saved results without marking the scan successful. Report validated findings separately from pending candidates and explain the incomplete coverage. Use the retained report and exports; do not start additional model work after cancellation or replace saved results with a no-findings response.
+
+After `complete_codex_security_scan` succeeds, include its returned `usage.totalTokens`, `usage.inputTokens`, and `usage.cachedInputTokens` in the final response when `usage.coverage` is `complete` or `partial`; explicitly label a partial measurement. If coverage is `unavailable`, say that token usage could not be measured instead of reporting zero or estimating a cost. Report only measured completion metadata in a terminal/chat host. Token usage is workbench metadata, not a reason to modify sealed scan artifacts or the deterministic report.
+
+Before workbench-owned Standard or workbench-backed diff completion, require `record_codex_security_scan_draft` to succeed. Before Deep completion, require the coordinator to return the parent scan's already-authored canonical manifest; do not submit another draft or rerun worker phases. SDK-owned Standard and terminal diff workflows instead verify their canonical JSON before the appropriate owner finalizes it. Completion validates and seals existing canonical artifacts and generates `report.md`; it does not create missing artifacts or run skipped scan phases.
+
+An MCP `-32602` input rejection, an `isError: true` result reporting `Input validation error`, or an explicit pre-write rejection of complete coverage containing deferred work or a follow-up surface makes no draft write. Correct only the named paths in the same draft, preserving all valid findings, fields, evidence, and deferred work; retry the same scan at most twice. Stop final submission after the first accepted complete draft; an accepted complete:false checkpoint does not end the audit. Do not blindly retry an ambiguous transport or write failure.
+
+For any other required scan phase, canonical-artifact write, or on-disk existence check that fails before completion, stop the current response and surface the exact workflow blocker. Do not call completion with missing artifacts, return a final report or no-findings result, or satisfy a structured output schema. Leave the durable scan available for a later continuation instead of canceling or failing it solely because canonical assembly is blocked.
+
+If `complete_codex_security_scan` or the terminal/chat finalizer fails, stop the current response and surface the exact MCP or finalizer error. Do not retry completion in the same response, return a final report or no-findings result, or satisfy a structured output schema. Leave the durable scan available for a later continuation instead of canceling or failing it solely because completion failed.
 
 Canonical report semantics live in these fields:
 
@@ -27,6 +47,8 @@ Canonical report semantics live in these fields:
 - `findings.json`: optional `writeup.reportPath` for a derived, unsealed detailed vulnerability report written under `findings/<slug>/<slug>.md`
 - `scan-manifest.json`: optional `scan.hardening.portfolioPath` for the derived, unsealed design portfolio at `hardening/hardening.md`
 - `coverage.json`: `surfaces` including `riskArea` and `notes`, plus `openQuestions`
+
+For a whole-repository Deep scan, the workbench derives `coverage.inventoryStrategy: "repository"` in the stored coverage document; repeated discovery is workflow metadata, not a different inventory strategy. Do not include `inventoryStrategy` in `record_codex_security_scan_draft`.
 
 Older v1 producers may omit the new optional fields. Finalization uses explicit JSON-derived fallback text in that case; it never reads a pre-existing report to fill gaps.
 
@@ -37,15 +59,15 @@ When there are no reportable findings, include a short `No findings` section tha
 When there are reportable findings, render them as readable markdown findings rather than raw JSON or a dumped schema object.
 Order findings from highest severity to lowest severity: `critical`, then `high`, then `medium`, then `low`.
 
-Use a separate finding entry for each independently attackable source/control/sink instance. Do not combine sibling routes, templates, query builders, parser operations, auth/object-access endpoints, or shared-helper callers into one representative finding solely for readability; if grouping helps, add a short grouped summary after the individual finding entries.
-
-If validation or attack-path analysis provides a broad family row with multiple independently triggerable sink, parser, helper, API-mode, or protected-action lines, split it into child final findings before writing the report. Multiple affected lines inside one finding are appropriate for one inseparable proof tuple, such as a wrapper plus its shared sink, but not as a substitute for separate findings when sibling operations can be triggered independently.
+Group observations only when they share the same broken security control and effective remediation. Preserve every affected route, operation, sink, and supporting source location; keep distinct security failures separate even when they share a CWE.
 
 Set the finding category and CWE from the primary broken control. Do not add secondary support-impact CWEs, such as data exposure or missing authentication, to an injection/RCE/path/file/parser finding merely because they make exploitation worse; mention those impacts in prose or emit a separate finding if that secondary control is independently vulnerable.
 
-Examples that should normally become separate final findings include SQL API modes such as `execute`, `executemany`, and `executescript`; deserializer variants such as `pickle.load`, `pickle.loads`, `yaml.load`, and `yaml.load_all`; distinct path/file helper calls; SSRF modes with different destination controls; and missing-auth protected actions such as create, delete, reset, admin, and job-trigger endpoints.
+Canonical `severity.changeConditions` must be one non-empty string; when `attack_path.change_conditions` contains multiple strings, join them into one prose string before writing `findings.json`.
 
-Before completing canonical JSON, reconcile each final finding against its candidate-ledger path from `scan-artifacts.md`, the saved validation closure table, and the repository coverage ledger when those artifacts exist. Every final candidate finding must have discovery, validation, and attack-path receipts for the same candidate id, or an explicit follow-up-needed reason for the missing proof. Start from validated rows marked `reportable` or `survives: yes`, not only from the most polished candidate narrative. Every `reportable` seeded or root-control ledger row must become a canonical finding with the same root-control file:line. Rows closed as `suppressed`, `not_applicable`, or `deferred` should appear in canonical coverage surfaces using public-facing outcomes such as `Rejected`, `Not applicable`, or `Needs follow-up`. Do not silently drop a seeded/root-control row because a same-family neighboring finding survived. If attack-path analysis omitted a reportable validation row, populate a concise canonical attack path from the validation evidence and threat model rather than dropping the row.
+For workbench-backed diff candidates, apply row outcomes in this order: validation disposition `reportable` plus attack-path decision `reportable` becomes a finding with its distinct instance and all relevant entrypoint, root-control, sink, and supporting locations; otherwise, a `deferred` result from either phase becomes `needs_follow_up` coverage and a `coverage.deferred` entry using the recorded uncertainty or proof gap; otherwise, validation disposition `not_applicable` becomes `not_applicable` coverage; otherwise, validation disposition `suppressed` or attack-path decision `ignore` becomes `rejected` coverage. A missing required phase record leaves the candidate unresolved and prevents complete coverage. Do not require phase receipts, per-candidate narratives, or another reconciliation pass.
+
+Terminal diff scans without a `scanId` may provide per-candidate ledgers, validation closure tables, and repository coverage ledgers. When those artifacts exist, retain their traceability: start from reportable/surviving rows, preserve exact affected locations, and map suppressed, not-applicable, or deferred rows to public-facing coverage outcomes. Do not silently drop a seeded row because a same-family neighbor survived.
 
 ## Report Structure
 
@@ -55,13 +77,15 @@ Use this report structure:
 
 `## Scope`
 
+Deep reports present the configured include and exclude paths and execution outcome alongside aggregated findings, with their validation, attack paths, affected locations, and any supplied scope and threat-model context. When the discovery time limit expires before any source review completes, the report explains the incomplete review.
+
 Populate `scan.scope` with in-scope context, artifacts reviewed, runtime or test status, validation mode, and explicit limitations. Include/exclude paths and coverage fields supply the remaining projected scope content. If the threat model was generated during Phase 1 rather than provided by the user, say that in canonical scope context. Do not call generated threat-model material an external input.
 
 After the scope bullets, include a compact `### Scan Summary` table when the scan has findings or repository-wide coverage. Use columns `Field` and `Value`. Include the count of reportable findings, severity mix, confidence mix, coverage, and validation mode when those values are known. Keep artifact paths below this table.
 
 `## Threat Model`
 
-Populate `scan.threatModel` from the completed threat-model analysis. The detailed `<context_dir>/threat_model.md` may remain supporting evidence, but finalization reads only the canonical threat-model object when projecting this section.
+Use the completed canonical `threatModel` when one exists. For a workflow that produced a Markdown model, retain the text exactly as `{ "format": "markdown", "content": "<completed model text>" }` in the canonical draft. A historical `<context_dir>/threat_model.md` may supply missing canonical content; it must not override a later canonical model. Use the field mapping and scenario reconciliation in `threat-model.md` when building a generated structured model; do not regenerate it from the final finding list. Preserve source citations, capability boundaries, deployment assumptions, and material unknowns. Finalization reads the canonical model when projecting this section and the root-level `threatmodel.md`. Exporting that saved model does not perform another analysis.
 
 `## Findings`
 
@@ -100,7 +124,7 @@ Affected lines must include the root broken control or dangerous sink line when 
 Then render these subsections under each finding:
 
 - `#### Summary`
-  - Explain why the issue matters, what the vulnerable path is, and why the current controls are insufficient.
+  - Start with how to reproduce the issue and what happens in the product, then explain why the code causes that behavior.
   - Wrap code identifiers, RPC names, functions, types, fields, parameters, configuration keys, and literal values in single backticks.
 - `#### Root Cause`
   - State the violated security invariant and explain exactly how the implementation breaks it.

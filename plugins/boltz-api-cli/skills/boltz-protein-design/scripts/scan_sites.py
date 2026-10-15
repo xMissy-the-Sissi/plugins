@@ -90,12 +90,24 @@ def footprint(cif_path, target_chain, cutoff, binder_chains=None):
     if len(binder) == 0:
         return set()
     site = set()
+    cutoff_sq = cutoff * cutoff
+    # Performance optimization: compute bounding box of binder atoms for fast spatial pruning
+    binder_min = binder.min(axis=0) - cutoff
+    binder_max = binder.max(axis=0) + cutoff
+
     for idx, res in pairs:
         ca = atom_coords(res)
+        # Fast bounding box check to skip distant residues without array broadcasting
+        c_min = ca.min(axis=0)
+        c_max = ca.max(axis=0)
+        if np.any(c_max < binder_min) or np.any(c_min > binder_max):
+            continue
+        # Check squared distance to avoid expensive np.sqrt calls
         d2 = ((ca[:, None, :] - binder[None, :, :]) ** 2).sum(-1)
-        if np.sqrt(d2.min()) < cutoff:
+        if d2.min() < cutoff_sq:
             site.add(idx)
     return site
+
 
 
 def jaccard(a, b):
