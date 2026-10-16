@@ -360,9 +360,14 @@
   opacity: 0.42;
 }
 
-.chart-legend-button:hover {
+.chart-legend-button:hover:not(:disabled) {
   background: transparent;
   color: var(--ds-chart-text);
+}
+
+.chart-legend-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .chart-legend-button:focus-visible {
