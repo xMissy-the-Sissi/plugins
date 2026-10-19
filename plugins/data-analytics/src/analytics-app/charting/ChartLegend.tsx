@@ -73,6 +73,7 @@ export function ChartLegend({
             <li className="recharts-legend-item chart-legend-item" key={item.id}>
               {interactive ? (
                 <button
+                  aria-label={isVisible ? `Hide ${item.value}` : `Show ${item.value}`}
                   aria-pressed={isVisible}
                   className="chart-legend-button"
                   onClick={() => toggle(item.id)}
