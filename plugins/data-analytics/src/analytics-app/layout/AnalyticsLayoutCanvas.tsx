@@ -474,8 +474,29 @@ export function AnalyticsLayoutCanvas({
     setDragSession(session);
   }
 
-  function handlePointerDown(event: ReactPointerEvent<HTMLDivElement>, blockId: string) {
+  function handlePointerDown(event: ReactPointerEvent<HTMLElement>, blockId: string) {
     startDragSession(event, blockId);
+  }
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLElement>, blockId: string) {
+    if (!isEditMode) return;
+    if (["ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight"].includes(event.key)) {
+      event.preventDefault();
+      const currentIndex = items.findIndex((item) => item.id === blockId);
+      if (currentIndex === -1) return;
+      let targetIndex = currentIndex;
+      if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
+        targetIndex = Math.max(0, currentIndex - 1);
+      } else if (event.key === "ArrowDown" || event.key === "ArrowRight") {
+        targetIndex = Math.min(items.length - 1, currentIndex + 1);
+      }
+      if (targetIndex !== currentIndex) {
+        const nextItems = [...items];
+        const [moved] = nextItems.splice(currentIndex, 1);
+        nextItems.splice(targetIndex, 0, moved);
+        commitItems(nextItems);
+      }
+    }
   }
 
   function finishDrag(commit: boolean) {
@@ -610,15 +631,17 @@ export function AnalyticsLayoutCanvas({
                   }}
                 >
                   {isEditMode ? (
-                    <div
-                      aria-hidden="true"
+                    <button
+                      aria-label={`Reorder ${item.id} card`}
                       className="analytics-layout-grab-handle"
                       data-image-export-exclude="true"
+                      onKeyDown={(event) => handleKeyDown(event, item.id)}
                       onPointerDown={(event) => handlePointerDown(event, item.id)}
-                      title="Drag to reorder"
+                      title="Drag or use arrow keys to reorder"
+                      type="button"
                     >
                       <DragHandleIcon />
-                    </div>
+                    </button>
                   ) : null}
                   <div className="analytics-layout-item-shell">
                     {rendered}
