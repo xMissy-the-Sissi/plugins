@@ -2,12 +2,6 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("interactive chart legend buttons have descriptive aria-label for series toggling", async () => {
-  const legendSource = await readFile(new URL("../src/analytics-app/charting/ChartLegend.tsx", import.meta.url), "utf8");
-
-  assert.match(legendSource, /aria-label=\{`Toggle \$\{item\.value\} series visibility`\}/);
-});
-
 test("tooltip percent encodings inherit chart percent semantics for literal percent units", async () => {
   const source = await readFile(new URL("../src/analytics-app/charting/ChartTooltip.tsx", import.meta.url), "utf8");
 

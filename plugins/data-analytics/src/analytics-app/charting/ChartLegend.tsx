@@ -75,7 +75,6 @@ export function ChartLegend({
               {interactive ? (
                 <button
                   aria-disabled={isOnlyVisible}
-                  aria-label={isVisible ? `Hide ${item.value}` : `Show ${item.value}`}
                   aria-pressed={isVisible}
                   className="chart-legend-button"
                   disabled={isOnlyVisible}
