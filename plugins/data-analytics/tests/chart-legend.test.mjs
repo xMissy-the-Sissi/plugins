@@ -10,10 +10,14 @@ test("ChartLegend sets disabled, aria-disabled, and title on the last visible in
 
   assert.match(source, /const isOnlyVisible = activeIds\.size === 1 && isVisible;/);
   assert.match(source, /aria-disabled=\{isOnlyVisible\}/);
-  assert.match(source, /disabled=\{isOnlyVisible\}/);
+  assert.match(source, /^\s*disabled=\{isOnlyVisible\}\s*$/m);
   assert.match(
     source,
     /title=\{isOnlyVisible \? "At least one series must remain visible" : undefined\}/
+  );
+  assert.match(
+    source,
+    /<span className="chart-legend-disabled-help">At least one series must remain visible<\/span>/
   );
 });
 

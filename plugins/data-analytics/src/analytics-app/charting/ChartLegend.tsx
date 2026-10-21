@@ -73,18 +73,24 @@ export function ChartLegend({
           return (
             <li className="recharts-legend-item chart-legend-item" key={item.id}>
               {interactive ? (
-                <button
-                  aria-disabled={isOnlyVisible}
-                  aria-pressed={isVisible}
-                  className="chart-legend-button"
-                  disabled={isOnlyVisible}
-                  onClick={() => toggle(item.id)}
-                  title={isOnlyVisible ? "At least one series must remain visible" : undefined}
-                  type="button"
-                >
-                  {marker}
-                  <span>{item.value}</span>
-                </button>
+                <>
+                  <button
+                    aria-disabled={isOnlyVisible}
+                    aria-label={isVisible ? `Hide ${item.value}` : `Show ${item.value}`}
+                    aria-pressed={isVisible}
+                    className="chart-legend-button"
+                    disabled={isOnlyVisible}
+                    onClick={() => toggle(item.id)}
+                    title={isOnlyVisible ? "At least one series must remain visible" : undefined}
+                    type="button"
+                  >
+                    {marker}
+                    <span>{item.value}</span>
+                  </button>
+                  {isOnlyVisible ? (
+                    <span className="chart-legend-disabled-help">At least one series must remain visible</span>
+                  ) : null}
+                </>
               ) : (
                 <>
                   {marker}
