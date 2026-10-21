@@ -52,6 +52,7 @@ export function ChartLegend({
       <ul className="recharts-default-legend chart-legend">
         {items.map((item) => {
           const isVisible = activeIds.has(item.id);
+          const isOnlyVisible = activeIds.size === 1 && isVisible;
           const markerStyle = { "--legend-color": item.color } as CSSProperties;
           const marker = item.lineStyle ? (
             <svg aria-hidden="true" className="chart-legend-line" style={markerStyle} viewBox="0 0 28 8">
@@ -72,16 +73,24 @@ export function ChartLegend({
           return (
             <li className="recharts-legend-item chart-legend-item" key={item.id}>
               {interactive ? (
-                <button
-                  aria-label={isVisible ? `Hide ${item.value}` : `Show ${item.value}`}
-                  aria-pressed={isVisible}
-                  className="chart-legend-button"
-                  onClick={() => toggle(item.id)}
-                  type="button"
-                >
-                  {marker}
-                  <span>{item.value}</span>
-                </button>
+                <>
+                  <button
+                    aria-disabled={isOnlyVisible}
+                    aria-label={isVisible ? `Hide ${item.value}` : `Show ${item.value}`}
+                    aria-pressed={isVisible}
+                    className="chart-legend-button"
+                    disabled={isOnlyVisible}
+                    onClick={() => toggle(item.id)}
+                    title={isOnlyVisible ? "At least one series must remain visible" : undefined}
+                    type="button"
+                  >
+                    {marker}
+                    <span>{item.value}</span>
+                  </button>
+                  {isOnlyVisible ? (
+                    <span className="chart-legend-disabled-help">At least one series must remain visible</span>
+                  ) : null}
+                </>
               ) : (
                 <>
                   {marker}

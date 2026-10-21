@@ -928,7 +928,7 @@ test("legend buttons stay transparent at rest while exposing hover and focus sta
   assert.match(chartTokens, /\.chart-legend-button:hover/);
   assert.match(chartTokens, /\.chart-legend-button:focus-visible/);
   assert.match(chartTokens, /\.chart-legend-button \{[\s\S]*border: 0;[\s\S]*background: transparent;/);
-  assert.match(chartTokens, /\.chart-legend-button:hover \{[\s\S]*color: var\(--ds-chart-text\);/);
+  assert.match(chartTokens, /\.chart-legend-button:hover:not\(:disabled\) \{[\s\S]*color: var\(--ds-chart-text\);/);
   assert.match(chartTokens, /box-shadow: 0 0 0 3px/);
 });
 
