@@ -2598,7 +2598,16 @@ return (<th aria-sort={isSorted
 : "none"} key={column.field} ref={(element) => {
 headerCellRefs.current[column.field] = element;
 }} className={headerClassName} style={columnWidthStyle(column)}>
-<button className="table-sort-button" onClick={() => toggleSort(column.field)} type="button">
+<button
+  aria-label={
+    isSorted
+      ? `Sort ${column.label} ${sortState.direction === "asc" ? "descending" : "ascending"}`
+      : `Sort ${column.label} ascending`
+  }
+  className="table-sort-button"
+  onClick={() => toggleSort(column.field)}
+  type="button"
+>
 <span>{column.label}</span>
 {SortIcon ? <SortIcon aria-hidden="true" size={14} strokeWidth={2}/> : null}
 </button>
