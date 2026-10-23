@@ -612,19 +612,23 @@ export function DataTable({
               <span>Page {currentPage + 1} of {totalPages}</span>
               <div className="table-page-buttons">
                 <button
+                  aria-disabled={currentPage === 0}
                   aria-label="Previous page"
                   className="table-arrow-button"
                   disabled={currentPage === 0}
                   onClick={() => setPage(Math.max(0, currentPage - 1))}
+                  title={currentPage === 0 ? "First page reached" : "Previous page"}
                   type="button"
                 >
                   <ChevronLeft aria-hidden="true" size={14} strokeWidth={2} />
                 </button>
                 <button
+                  aria-disabled={currentPage >= totalPages - 1}
                   aria-label="Next page"
                   className="table-arrow-button"
                   disabled={currentPage >= totalPages - 1}
                   onClick={() => setPage(Math.min(totalPages - 1, currentPage + 1))}
+                  title={currentPage >= totalPages - 1 ? "Last page reached" : "Next page"}
                   type="button"
                 >
                   <ChevronRight aria-hidden="true" size={14} strokeWidth={2} />
