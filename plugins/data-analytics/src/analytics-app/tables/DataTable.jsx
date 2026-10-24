@@ -605,11 +605,11 @@ export function DataTable({
       {shouldShowCount || shouldShowPagination ? (
         <div className="shared-table-footer table-pagination">
           {shouldShowCount ? (
-            <span className="table-result-count">{resultCountLabel}</span>
+            <span aria-atomic="true" aria-live="polite" className="table-result-count">{resultCountLabel}</span>
           ) : null}
           {shouldShowPagination ? (
             <div className="table-page-control">
-              <span>Page {currentPage + 1} of {totalPages}</span>
+              <span aria-atomic="true" aria-live="polite">Page {currentPage + 1} of {totalPages}</span>
               <div className="table-page-buttons">
                 <button
                   aria-label="Previous page"
