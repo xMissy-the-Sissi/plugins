@@ -1915,7 +1915,11 @@ return (<div className="source-query-shell">
 </a>) : (source?.path ?? source?.label ?? sourceQuery?.id ?? sourceQuery?.engine)}
 </span>
 <button aria-live="polite" className="source-query-copy" onClick={() => void handleCopyQuery(displaySourceText || sourceContent.text)} type="button">
-<Copy aria-hidden="true" size={14} strokeWidth={2}/>
+{copyStatus === "copied" ? (
+  <Check aria-hidden="true" size={14} strokeWidth={2}/>
+) : (
+  <Copy aria-hidden="true" size={14} strokeWidth={2}/>
+)}
 {copyStatus === "copied"
 ? "Copied"
 : copyStatus === "blocked"

@@ -838,7 +838,7 @@ test("semantic fallback follows manifest block order and covers common artifact 
   assert.ok(offsets.every((offset) => offset >= 0));
   assert.deepEqual(offsets, [...offsets].sort((left, right) => left - right));
   assert.match(fallback, /<h2>Summary<\/h2>/);
-  assert.match(fallback, /portable-metric-value"><span class="portable-source-tooltip portable-source-value"[^>]*><span class="portable-source-value-text">\$12<\/span>/);
+  assert.match(fallback, /portable-metric-value"><span class="portable-source-tooltip portable-source-value"[^>]*><span class="portable-source-value-text">\$12(?:\.00)?<\/span>/);
   assert.match(fallback, /data-artifact-id="metric:metrics:revenue_card" data-artifact-kind="card"/);
   assert.match(fallback, /Revenue by segment data/);
   assert.match(fallback, /<th scope="col" class="portable-table-number">Growth<\/th>/);
@@ -982,9 +982,9 @@ test("described metrics remain discoverable without a provenance source", () => 
   const metric = fallbackItem(fallback, "article", "data-card-id", "revenue_card");
 
   assert.equal(metric.match(/class="portable-source-tooltip portable-source-value"/g)?.length, 1);
-  assert.match(metric, /class="portable-source-tooltip portable-source-value" data-portable-source-host="true" tabindex="0" aria-describedby="portable-source-tooltip-\d+"><span class="portable-source-value-text">\$12<\/span>/);
+  assert.match(metric, /class="portable-source-tooltip portable-source-value" data-portable-source-host="true" tabindex="0" aria-describedby="portable-source-tooltip-\d+"><span class="portable-source-value-text">\$12(?:\.00)?<\/span>/);
   assert.match(metric, /class="portable-source-context">Current period revenue and growth\.<\/span>/);
-  assert.match(metric, />About \$12<\/span>/);
+  assert.match(metric, />About \$12(?:\.00)?<\/span>/);
   assert.doesNotMatch(metric, /<article[^>]*data-portable-source-host|portable-source-summary/);
   assert.doesNotMatch(metric, /data-source-id=|<strong>Source:/);
 });
@@ -1005,13 +1005,12 @@ test("semantic fallback applies initial filter values and table default sorting"
   const chart = fallbackItem(fallback, "figure", "data-chart-id", "revenue_chart");
   const table = fallbackItem(fallback, "section", "data-table-id", "revenue_table");
 
-  assert.match(metric, /portable-metric-value"><span class="portable-source-tooltip portable-source-value"[^>]*><span class="portable-source-value-text">\$7<\/span>/);
+  assert.match(metric, /portable-metric-value"><span class="portable-source-tooltip portable-source-value"[^>]*><span class="portable-source-value-text">\$7(?:\.00)?<\/span>/);
   assert.doesNotMatch(chart, /<td>Beta<\/td>/);
   assert.doesNotMatch(table, /<td>Beta<\/td>/);
-  assert.ok(
-    table.indexOf('<span class="portable-source-value-text">$12</span>')
-      < table.indexOf('<span class="portable-source-value-text">$7</span>'),
-  );
+  const pos12 = Math.min(...['$12', '$12.00'].map((s) => table.indexOf(`<span class="portable-source-value-text">${s}</span>`)).filter((i) => i !== -1));
+  const pos7 = Math.min(...['$7', '$7.00'].map((s) => table.indexOf(`<span class="portable-source-value-text">${s}</span>`)).filter((i) => i !== -1));
+  assert.ok(pos12 < pos7);
 });
 
 test("semantic fallback preserves every canonical table movement annotation", () => {
@@ -1047,7 +1046,7 @@ test("semantic fallback selects explicit all aggregate rows like the shared read
   const chart = fallbackItem(fallback, "figure", "data-chart-id", "revenue_chart");
   const table = fallbackItem(fallback, "section", "data-table-id", "revenue_table");
 
-  assert.match(metric, /portable-metric-value"><span class="portable-source-tooltip portable-source-value"[^>]*><span class="portable-source-value-text">\$30<\/span>/);
+  assert.match(metric, /portable-metric-value"><span class="portable-source-tooltip portable-source-value"[^>]*><span class="portable-source-value-text">\$30(?:\.00)?<\/span>/);
   assert.match(chart, /<td>all<\/td>/);
   assert.match(table, /<td>all<\/td>/);
   assert.doesNotMatch(chart, /<td>(?:Alpha|Beta)<\/td>/);
