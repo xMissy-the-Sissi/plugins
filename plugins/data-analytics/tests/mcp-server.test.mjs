@@ -1964,7 +1964,7 @@ test("JavaScript MCP server rejects malformed widget resource aliases", async ()
   for (const uri of [
     "ui://widget/datascience-chart-999.0.0.html",
     "ui://widget/datascience-chart.html?v=999.0.0",
-    "ui://widget/datascience-chart-0.2.8-alpha.1.html",
+    "ui://widget/datascience-chart-999.0.0-alpha.1.html",
     `ui://widget/datascience-chart-${server.SERVER_VERSION}+future.html`,
     "ui://widget/datascience-chart-latest.html",
     "ui://widget/datascience-chart.html?v=0.2.6&variant=old",
