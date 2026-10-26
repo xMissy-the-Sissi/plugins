@@ -74,4 +74,25 @@ describe("artifact table sizing", () => {
     assert.deepEqual(result.columnWidths, { definition: 180, metric: 120 });
     assert.equal(result.tableWidth, 300);
   });
+
+  test("table pagination controls set aria-disabled and title tooltips at boundaries", async () => {
+    const dataTableSource = await readFile(
+      join(process.cwd(), "src", "analytics-app", "tables", "DataTable.jsx"),
+      "utf8",
+    );
+    const appSource = await readFile(
+      join(process.cwd(), "src", "analytics-app", "App.tsx"),
+      "utf8",
+    );
+
+    assert.match(dataTableSource, /aria-disabled=\{currentPage === 0\}/);
+    assert.match(dataTableSource, /title=\{currentPage === 0 \? "First page reached" : "Previous page"\}/);
+    assert.match(dataTableSource, /aria-disabled=\{currentPage >= totalPages - 1\}/);
+    assert.match(dataTableSource, /title=\{currentPage >= totalPages - 1 \? "Last page reached" : "Next page"\}/);
+
+    assert.match(appSource, /aria-disabled=\{currentPage === 0\}/);
+    assert.match(appSource, /title=\{currentPage === 0 \? "First page reached" : "Previous page"\}/);
+    assert.match(appSource, /aria-disabled=\{currentPage >= totalPages - 1\}/);
+    assert.match(appSource, /title=\{currentPage >= totalPages - 1 \? "Last page reached" : "Next page"\}/);
+  });
 });
