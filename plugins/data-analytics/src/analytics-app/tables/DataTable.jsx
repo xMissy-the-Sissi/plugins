@@ -616,6 +616,7 @@ export function DataTable({
                   className="table-arrow-button"
                   disabled={currentPage === 0}
                   onClick={() => setPage(Math.max(0, currentPage - 1))}
+                  title={currentPage === 0 ? "Already on first page" : undefined}
                   type="button"
                 >
                   <ChevronLeft aria-hidden="true" size={14} strokeWidth={2} />
@@ -625,6 +626,7 @@ export function DataTable({
                   className="table-arrow-button"
                   disabled={currentPage >= totalPages - 1}
                   onClick={() => setPage(Math.min(totalPages - 1, currentPage + 1))}
+                  title={currentPage >= totalPages - 1 ? "Already on last page" : undefined}
                   type="button"
                 >
                   <ChevronRight aria-hidden="true" size={14} strokeWidth={2} />
