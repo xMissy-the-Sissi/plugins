@@ -283,18 +283,25 @@ updatePopoverPosition();
 const frame = window.requestAnimationFrame(updatePopoverPosition);
 window.addEventListener("resize", updatePopoverPosition);
 window.addEventListener("scroll", updatePopoverPosition, true);
+function handleKeyDown(event) {
+if (event.key === "Escape") {
+closePopover();
+}
+}
+document.addEventListener("keydown", handleKeyDown);
 return () => {
 window.cancelAnimationFrame(frame);
 window.removeEventListener("resize", updatePopoverPosition);
 window.removeEventListener("scroll", updatePopoverPosition, true);
+document.removeEventListener("keydown", handleKeyDown);
 };
-}, [isOpen, updatePopoverPosition]);
+}, [isOpen, updatePopoverPosition, closePopover]);
 useEffect(() => clearOpenTimer, [clearOpenTimer]);
 const renderedPopoverStyle = popoverStyle
 ? { left: popoverStyle.left, maxWidth: popoverStyle.maxWidth, top: popoverStyle.top }
 : { left: 0, maxWidth: "min(320px, calc(100vw - 24px))", top: 0, visibility: "hidden" };
 return (<span className="kpi-info-wrap" onBlur={closePopover} onFocus={openImmediately} onMouseEnter={openAfterDelay} onMouseLeave={closePopover}>
-<button aria-describedby={isOpen ? tooltipId : undefined} aria-label={`${label}: ${description}`} className="kpi-info" ref={buttonRef} type="button">
+<button aria-describedby={isOpen ? tooltipId : undefined} aria-expanded={isOpen} aria-label={`${label}: ${description}`} className="kpi-info" ref={buttonRef} type="button">
 <MetricInfoIcon className="kpi-info-icon"/>
 </button>
 {isOpen && typeof document !== "undefined" ? createPortal(<span className="kpi-info-popover" id={tooltipId} ref={popoverRef} role="tooltip" style={renderedPopoverStyle}>
