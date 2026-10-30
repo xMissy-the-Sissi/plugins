@@ -2652,12 +2652,16 @@ return (<td className={className} key={column.field}>
 Page {currentPage + 1} of {totalPages}
 </span>
 <div className="table-page-buttons">
+<span className="table-arrow-button-wrap" title={currentPage === 0 ? "First page reached" : "Previous page"}>
 <button aria-label="Previous page" className="table-arrow-button" disabled={currentPage === 0} onClick={() => setPage((nextPage) => Math.max(0, nextPage - 1))} type="button">
 <ChevronLeft aria-hidden="true" size={16} strokeWidth={2}/>
 </button>
+</span>
+<span className="table-arrow-button-wrap" title={currentPage >= totalPages - 1 ? "Last page reached" : "Next page"}>
 <button aria-label="Next page" className="table-arrow-button" disabled={currentPage >= totalPages - 1} onClick={() => setPage((nextPage) => Math.min(totalPages - 1, nextPage + 1))} type="button">
 <ChevronRight aria-hidden="true" size={16} strokeWidth={2}/>
 </button>
+</span>
 </div>
 </div>) : null}
 </div>) : null}

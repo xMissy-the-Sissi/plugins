@@ -49475,27 +49475,35 @@ function DataTable({ columnWidths, columns, density = "dense", emptyLabel = "No 
 					totalPages
 				] }), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 					className: "table-page-buttons",
-					children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
-						"aria-label": "Previous page",
-						className: "table-arrow-button",
-						disabled: currentPage === 0,
-						onClick: () => setPage(Math.max(0, currentPage - 1)),
-						type: "button",
-						children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChevronLeft, {
-							"aria-hidden": "true",
-							size: 14,
-							strokeWidth: 2
+					children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+						className: "table-arrow-button-wrap",
+						title: currentPage === 0 ? "First page reached" : "Previous page",
+						children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
+							"aria-label": "Previous page",
+							className: "table-arrow-button",
+							disabled: currentPage === 0,
+							onClick: () => setPage(Math.max(0, currentPage - 1)),
+							type: "button",
+							children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChevronLeft, {
+								"aria-hidden": "true",
+								size: 14,
+								strokeWidth: 2
+							})
 						})
-					}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
-						"aria-label": "Next page",
-						className: "table-arrow-button",
-						disabled: currentPage >= totalPages - 1,
-						onClick: () => setPage(Math.min(totalPages - 1, currentPage + 1)),
-						type: "button",
-						children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChevronRight, {
-							"aria-hidden": "true",
-							size: 14,
-							strokeWidth: 2
+					}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+						className: "table-arrow-button-wrap",
+						title: currentPage >= totalPages - 1 ? "Last page reached" : "Next page",
+						children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
+							"aria-label": "Next page",
+							className: "table-arrow-button",
+							disabled: currentPage >= totalPages - 1,
+							onClick: () => setPage(Math.min(totalPages - 1, currentPage + 1)),
+							type: "button",
+							children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChevronRight, {
+								"aria-hidden": "true",
+								size: 14,
+								strokeWidth: 2
+							})
 						})
 					})]
 				})]
@@ -53693,6 +53701,10 @@ button.leaderboard-caption:focus-visible {
 
 .shared-table-footer > .table-page-control:first-child {
   margin-left: auto;
+}
+
+.table-arrow-button-wrap {
+  display: inline-flex;
 }
 
 .table-arrow-button {
