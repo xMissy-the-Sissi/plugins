@@ -302,6 +302,10 @@
   margin-left: auto;
 }
 
+.table-arrow-button-wrap {
+  display: inline-flex;
+}
+
 .table-arrow-button {
   display: inline-flex;
   align-items: center;

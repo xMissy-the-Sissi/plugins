@@ -611,24 +611,28 @@ export function DataTable({
             <div className="table-page-control">
               <span>Page {currentPage + 1} of {totalPages}</span>
               <div className="table-page-buttons">
-                <button
-                  aria-label="Previous page"
-                  className="table-arrow-button"
-                  disabled={currentPage === 0}
-                  onClick={() => setPage(Math.max(0, currentPage - 1))}
-                  type="button"
-                >
-                  <ChevronLeft aria-hidden="true" size={14} strokeWidth={2} />
-                </button>
-                <button
-                  aria-label="Next page"
-                  className="table-arrow-button"
-                  disabled={currentPage >= totalPages - 1}
-                  onClick={() => setPage(Math.min(totalPages - 1, currentPage + 1))}
-                  type="button"
-                >
-                  <ChevronRight aria-hidden="true" size={14} strokeWidth={2} />
-                </button>
+                <span className="table-arrow-button-wrap" title={currentPage === 0 ? "First page reached" : "Previous page"}>
+                  <button
+                    aria-label="Previous page"
+                    className="table-arrow-button"
+                    disabled={currentPage === 0}
+                    onClick={() => setPage(Math.max(0, currentPage - 1))}
+                    type="button"
+                  >
+                    <ChevronLeft aria-hidden="true" size={14} strokeWidth={2} />
+                  </button>
+                </span>
+                <span className="table-arrow-button-wrap" title={currentPage >= totalPages - 1 ? "Last page reached" : "Next page"}>
+                  <button
+                    aria-label="Next page"
+                    className="table-arrow-button"
+                    disabled={currentPage >= totalPages - 1}
+                    onClick={() => setPage(Math.min(totalPages - 1, currentPage + 1))}
+                    type="button"
+                  >
+                    <ChevronRight aria-hidden="true" size={14} strokeWidth={2} />
+                  </button>
+                </span>
               </div>
             </div>
           ) : null}
